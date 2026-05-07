@@ -13,15 +13,15 @@ st.markdown("""
     </style>""", unsafe_allow_html=True)
 
 # 2. App Header
-st.title("🎬 Cinematic Sentiment Engine v3.0")
-st.markdown("Analyze nuanced movie reviews instantly. Powered by a 28-class RoBERTa Emotion model.")
+st.title("🎬 Cinematic Sentiment Engine v4.0 - Pro Edition")
+st.markdown("Deep contextual review analysis. Powered by a 28-class RoBERTa neural network.")
 st.divider()
 
-# 3. Load the Upgraded Nuanced Model
+# 3. Load the Upgraded Nuanced Model (Now pulling top 3 emotions)
 @st.cache_resource
 def load_model():
-    # Swapping the generic model for a fine-tuned emotion analyzer
-    return pipeline("text-classification", model="SamLowe/roberta-base-go_emotions")
+    # Adding top_k=3 forces the model to return the top 3 conflicting emotions!
+    return pipeline("text-classification", model="SamLowe/roberta-base-go_emotions", top_k=3)
 
 analyzer = load_model()
 
@@ -32,7 +32,7 @@ with col1:
     st.subheader("Input Review")
     user_review = st.text_area("Drop a movie review here:", height=200, 
                                placeholder="e.g., The visual effects were absolutely stunning, but the plot felt a bit rushed and heavy-handed...")
-    analyze_button = st.button("🧠 Analyze Sentiment", use_container_width=True)
+    analyze_button = st.button("🧠 Deep Analyze Sentiment", use_container_width=True)
 
 # 5. Analysis & Visualization Logic
 with col2:
@@ -42,23 +42,49 @@ with col2:
         if user_review:
             with st.spinner("Processing neural pathways..."):
                 time.sleep(1.5) 
-                # The model now returns a specific emotion instead of just POS/NEG
-                result = analyzer(user_review)[0]
-                emotion = result['label'].capitalize()
-                score = result['score']
                 
-                # Visualizing the Output dynamically
-                st.info(f"🎭 Primary Emotion Detected: **{emotion}**")
+                # Result is now a list of the top 3 dictionaries
+                results = analyzer(user_review)[0]
                 
-                st.metric(label="Model Confidence", value=f"{score:.1%}")
-                st.progress(score)
+                # --- PRIMARY EMOTION ---
+                primary = results[0]
+                primary_label = primary['label'].capitalize()
                 
+                st.success(f"🎭 Dominant Emotion: **{primary_label}**")
+                st.metric(label="Primary Confidence", value=f"{primary['score']:.1%}")
+                st.progress(primary['score'])
+                
+                st.divider()
+                
+                # --- SECONDARY EMOTIONS (The Machine Learning Flex) ---
+                st.markdown("#### 🔍 Nuance Breakdown")
+                st.caption("Secondary emotions detected in the subtext:")
+                
+                for res in results[1:]:
+                    label = res['label'].capitalize()
+                    score = res['score']
+                    st.write(f"**{label}** ({score:.1%})")
+                    st.progress(score)
+                
+                st.divider()
+
+                # --- REAL-WORLD BUSINESS INSIGHT ---
+                st.markdown("#### 🏢 Studio Recommendation")
+                if primary_label in ["Admiration", "Joy", "Approval", "Excitement", "Amusement"]:
+                    st.info("🟢 **Action:** Highlight quote in marketing materials. High audience retention expected.")
+                elif primary_label in ["Disappointment", "Annoyance", "Disapproval", "Sadness"]:
+                    st.error("🔴 **Action:** Flag for the writers' room. Post-production pacing edits recommended.")
+                elif primary_label in ["Confusion", "Curiosity", "Surprise"]:
+                    st.warning("🟡 **Action:** Mixed reaction. Consider revising the trailer to set better audience expectations.")
+                else:
+                    st.write("⚪ **Action:** Neutral response. Standard release strategy.")
+                
+                # --- TECHNICAL LOGS ---
                 with st.expander("Show Technical Breakdown"):
                     st.json({
                         "Model": "SamLowe/roberta-base-go_emotions",
-                        "Raw Score": score,
-                        "Inference Time": "1.52s",
-                        "Architecture": "RoBERTa Transformer"
+                        "Inference_Type": "Multi-Label Top 3",
+                        "Raw_Outputs": results
                     })
         else:
             st.warning("⚠️ Please enter a review to begin analysis.")
